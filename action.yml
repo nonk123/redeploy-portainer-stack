@@ -40,7 +40,7 @@ runs:
       shell: bash
       run: |
         STACK_CONTENT=$(curl -s -H "Authorization: Bearer $JWT_TOKEN" \
-          "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}/file" | jq -r .stackFileContent)
+          "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}/file" | jq -r .StackFileContent)
 
         echo "$STACK_CONTENT" | sed 's/^/::add-mask::/'
 
