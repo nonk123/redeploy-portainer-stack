@@ -29,5 +29,5 @@ Then set `with.url`, `with.endpoint_id`, and `with.stack_id` to the values obtai
 
 ```plain
 https://portainer.sv.q7x.ru/#!/13/docker/stacks/waste-it-bot?id=172+...
-^- url -------------------^    ^- endpoint_id         stack_id -^
+^- url -------------------^    ^- endpoint_id          stack_id --^
 ```
