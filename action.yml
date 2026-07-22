@@ -1,0 +1,45 @@
+name: redeploy-portainer-stack
+description: Redeploy a Portainer CE stack from GitHub Actions CI
+author: nonk123
+
+inputs:
+  url:
+    description: Your Portainer CE instance public URL, such as `https://portainer.example.org:9443`.
+    required: true
+
+  username:
+    description: Username to log into your Portainer CE instance.
+    required: true
+
+  password:
+    description: Password to log into your Portainer CE instance.
+    required: true
+
+  stack_id:
+    description: Portainer stack ID. See project's README for where to get it from.
+    required: true
+
+  endpoint_id:
+    description: Portainer environment ID. See project's README for where to get it from.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Log into the Portainer instance
+      shell: bash
+      run: |
+        JWT_TOKEN=$(curl -s -X POST \
+          -H "Content-Type: application/json" \
+          -d '{"username":"${{ inputs.username }}","password":"${{ inputs.password }}"}' \
+          "${{ inputs.url }}/api/auth" | jq -r '.jwt')
+        echo "::add-mask::$JWT_TOKEN"
+        echo JWT_TOKEN=$JWT_TOKEN >> $GITHUB_ENV
+
+    - name: Force Portainer CE stack update
+      shell: bash
+      run: |
+        curl -X PUT \
+          -H "Authorization: Bearer $JWT_TOKEN" \
+          -H "Content-Type: application/json" \
+          "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}/git/redeploy?endpointId=${{ inputs.endpoint_id }}"
