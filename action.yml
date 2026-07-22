@@ -36,10 +36,23 @@ runs:
         echo "::add-mask::$JWT_TOKEN"
         echo JWT_TOKEN=$JWT_TOKEN >> $GITHUB_ENV
 
+    - name: Fetch stack definition
+      shell: bash
+      run: |
+        STACK_CONTENT=$(curl -s -H "Authorization: Bearer $JWT_TOKEN" \
+          "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}/file" | jq -r .stackFileContent)
+
+        echo "$STACK_CONTENT" | sed 's/^/::add-mask::/'
+
+        echo "STACK_CONTENT<<EOF" >> $GITHUB_ENV
+        echo "$STACK_CONTENT" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+
     - name: Force Portainer CE stack update
       shell: bash
       run: |
-        curl -X PUT \
+        curl -s -X PUT \
           -H "Authorization: Bearer $JWT_TOKEN" \
           -H "Content-Type: application/json" \
-          "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}/git/redeploy?endpointId=${{ inputs.endpoint_id }}"
+          -d "{\"stackFileContent\":$(echo -n "$STACK_CONTENT" | jq -R -s .),\"env\":[],\"prune\": true,\"pullImage\": true}" \
+          "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}?endpointId=${{ inputs.endpoint_id }}"

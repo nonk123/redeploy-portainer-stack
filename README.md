@@ -1,6 +1,13 @@
 # redeploy-portainer-stack
 
-Redeploy a Portainer CE stack from GitHub Actions CI.
+> [!WARNING]
+> As a side-effect, this action **will erase environment variables** added to your stack's definition.
+
+Redeploy a Portainer CE **Web editor** stack from GitHub Actions CI.
+
+Yes, it has to be a **Web editor** stack:
+
+![The different "Build method" options in the Portainer stack creation form. You have to pick "Web editor" for this action to work correctly.](.github/assets/web-editor.png)
 
 I made this because I needed a maintained action like this for use in my personal projects.
 
