@@ -1,8 +1,5 @@
 # redeploy-portainer-stack
 
-> [!WARNING]
-> As a side-effect, this action **will erase environment variables** added to your stack's definition.
-
 Redeploy a Portainer CE **Web editor** stack from GitHub Actions CI.
 
 Yes, it has to be a **Web editor** stack:

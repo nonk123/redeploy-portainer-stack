@@ -1,0 +1,19 @@
+name: Test action locally
+
+on: workflow_dispatch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Deploy
+        uses: ./
+        with:
+          url: ${{ secrets.PORTAINER_URL }}
+          username: ${{ secrets.PORTAINER_USERNAME }}
+          password: ${{ secrets.PORTAINER_PASSWORD }}
+          stack_id: ${{ secrets.PORTAINER_STACK_ID }}
+          endpoint_id: ${{ secrets.PORTAINER_ENDPOINT_ID }}

@@ -1,5 +1,5 @@
 name: redeploy-portainer-stack
-description: Redeploy a Portainer CE stack from GitHub Actions CI
+description: Redeploy a Portainer CE Web editor stack from GitHub Actions CI
 author: nonk123
 
 inputs:
@@ -16,11 +16,11 @@ inputs:
     required: true
 
   stack_id:
-    description: Portainer stack ID. See project's README for where to get it from.
+    description: Portainer stack ID. See the action's README for where to get it from.
     required: true
 
   endpoint_id:
-    description: Portainer environment ID. See project's README for where to get it from.
+    description: Portainer environment ID. See the action's README for where to get it from.
     required: true
 
 runs:
@@ -29,17 +29,41 @@ runs:
     - name: Log into the Portainer instance
       shell: bash
       run: |
-        JWT_TOKEN=$(curl -s -X POST \
+        set -e
+
+        JWT_TOKEN=$(curl -sf -X POST \
           -H "Content-Type: application/json" \
           -d '{"username":"${{ inputs.username }}","password":"${{ inputs.password }}"}' \
           "${{ inputs.url }}/api/auth" | jq -r '.jwt')
         echo "::add-mask::$JWT_TOKEN"
-        echo JWT_TOKEN=$JWT_TOKEN >> $GITHUB_ENV
+        echo "JWT_TOKEN=$JWT_TOKEN" >> $GITHUB_ENV
 
-    - name: Fetch stack definition
+    - name: Check stack access permissions
       shell: bash
       run: |
-        STACK_CONTENT=$(curl -s -H "Authorization: Bearer $JWT_TOKEN" \
+        code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $JWT_TOKEN" "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}")
+
+        if [[ "$code" != 200 ]]; then
+          echo "::error::Failed to access Portainer stack: HTTP code $code"
+          exit 1
+        fi
+
+    - name: Fetch stack environment variables
+      shell: bash
+      run: |
+        set -e
+
+        ENV_VALUE=$(curl -sf -H "Authorization: Bearer $JWT_TOKEN" \
+          "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}" | jq -c .Env)
+        echo "::add-mask::$ENV_VALUE"
+        echo "ENV_VALUE=$ENV_VALUE" >> $GITHUB_ENV
+
+    - name: Fetch stack YAML definition
+      shell: bash
+      run: |
+        set -e
+
+        STACK_CONTENT=$(curl -sf -H "Authorization: Bearer $JWT_TOKEN" \
           "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}/file" | jq -r .StackFileContent)
 
         echo "$STACK_CONTENT" | grep '[^[:space:]]' | sed 's/^/::add-mask::/'
@@ -51,8 +75,10 @@ runs:
     - name: Force Portainer CE stack update
       shell: bash
       run: |
-        curl -s -X PUT -o /dev/null \
+        set -e
+
+        curl -sf -X PUT -o /dev/null \
           -H "Authorization: Bearer $JWT_TOKEN" \
           -H "Content-Type: application/json" \
-          -d "{\"stackFileContent\":$(echo -n "$STACK_CONTENT" | jq -R -s .),\"env\":[],\"prune\": true,\"pullImage\": true}" \
+          -d "{\"stackFileContent\":$(echo -n "$STACK_CONTENT" | jq -R -s .),\"env\":$ENV_VALUE,\"prune\": true,\"pullImage\": true}" \
           "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}?endpointId=${{ inputs.endpoint_id }}"
