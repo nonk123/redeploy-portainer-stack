@@ -40,8 +40,11 @@ runs:
         stack_id = params.get("id", [""])[0]
 
         if u.scheme and u.netloc and env_id.isdigit() and stack_id.isdigit():
+            url = f"{u.scheme}://{u.netloc}"
+            print(f"::add-mask::{url}")
+
             with open(os.environ["GITHUB_OUTPUT"], "a") as out:
-                out.write(f"url={u.scheme}://{u.netloc}\n")
+                out.write(f"url={url}\n")
                 out.write(f"env_id={env_id}\n")
                 out.write(f"stack_id={stack_id}\n")
         else:
