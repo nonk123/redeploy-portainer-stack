@@ -18,20 +18,17 @@ steps:
   - name: Redeploy Portainer stack
     uses: nonk123/redeploy-portainer-stack@master
     with:
-      url: ${{ secrets.PORTAINER_URL }}
+      url: ${{ secrets.PORTAINER_STACK_URL }} # e.g. https://my.portainer.monster/#!/13/docker/stacks/cringe?id=172+...
       username: ${{ secrets.PORTAINER_USERNAME }}
       password: ${{ secrets.PORTAINER_PASSWORD }}
-      stack_id: ${{ secrets.PORTAINER_STACK_ID }}
-      endpoint_id: ${{ secrets.PORTAINER_ENDPOINT_ID }}
 ```
 
 ## Inputs
 
 Set `with.username` and `with.password` to the login credentials for your Portainer instance. Use the [GitHub Actions secrets feature](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)! Never write them in plain text!
 
-Then set `with.url`, `with.endpoint_id`, and `with.stack_id` to the values obtained from the stack URL in your browser. Here's an infographic based on a concrete URL example:
+Then set `with.url` to the exact stack URL you see in your browser, like this one:
 
 ```plain
-https://portainer.sv.q7x.ru/#!/13/docker/stacks/waste-it-bot?id=172+...
-^- url -------------------^    ^- endpoint_id          stack_id --^
+https://my.portainer.monster/#!/13/docker/stacks/cringe?id=172+...
 ```

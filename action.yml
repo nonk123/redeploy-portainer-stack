@@ -15,17 +15,40 @@ inputs:
     description: Password to log into your Portainer CE instance.
     required: true
 
-  stack_id:
-    description: Portainer stack ID. See the action's README for where to get it from.
-    required: true
-
-  endpoint_id:
-    description: Portainer environment ID. See the action's README for where to get it from.
-    required: true
-
 runs:
   using: composite
   steps:
+    - name: Parse stack URL
+      shell: bash
+      id: parse
+      env:
+        TARGET_URL: ${{ inputs.url }}
+      run: |
+        python3 -c '
+        import os
+        import sys
+
+        from urllib.parse import urlparse, parse_qs
+
+        u = urlparse(os.environ["TARGET_URL"].strip())
+        inner = urlparse(u.fragment.lstrip("!")) if u.fragment else u
+
+        segments = [s for s in inner.path.split("/") if s]
+        env_id = segments[0] if segments else ""
+
+        params = parse_qs(inner.query) or parse_qs(u.query)
+        stack_id = params.get("id", [""])[0]
+
+        if u.scheme and u.netloc and env_id.isdigit() and stack_id.isdigit():
+            with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+                out.write(f"url={u.scheme}://{u.netloc}\n")
+                out.write(f"env_id={env_id}\n")
+                out.write(f"stack_id={stack_id}\n")
+        else:
+            print("::error::Invalid Portainer stack URL. Expected format: https://<host>/#!/<env_id>/docker/stacks/<name>?id=<stack_id>")
+            sys.exit(1)
+        '
+
     - name: Log into the Portainer instance
       shell: bash
       run: |
@@ -34,14 +57,14 @@ runs:
         JWT_TOKEN=$(curl -sf -X POST \
           -H "Content-Type: application/json" \
           -d '{"username":"${{ inputs.username }}","password":"${{ inputs.password }}"}' \
-          "${{ inputs.url }}/api/auth" | jq -r '.jwt')
+          "${{ steps.parse.outputs.url }}/api/auth" | jq -r '.jwt')
         echo "::add-mask::$JWT_TOKEN"
         echo "JWT_TOKEN=$JWT_TOKEN" >> $GITHUB_ENV
 
     - name: Check stack access permissions
       shell: bash
       run: |
-        code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $JWT_TOKEN" "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}")
+        code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $JWT_TOKEN" "${{ steps.parse.outputs.url }}/api/stacks/${{ steps.parse.outputs.stack_id }}")
 
         if [[ "$code" != 200 ]]; then
           echo "::error::Failed to access Portainer stack (HTTP code $code)"
@@ -55,7 +78,7 @@ runs:
         set -e
 
         ENV_VALUE=$(curl -sf -H "Authorization: Bearer $JWT_TOKEN" \
-          "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}" | jq -c .Env)
+          "${{ steps.parse.outputs.url }}/api/stacks/${{ steps.parse.outputs.stack_id }}" | jq -c .Env)
         echo "::add-mask::$ENV_VALUE"
         echo "ENV_VALUE=$ENV_VALUE" >> $GITHUB_ENV
 
@@ -65,7 +88,7 @@ runs:
         set -e
 
         STACK_CONTENT=$(curl -sf -H "Authorization: Bearer $JWT_TOKEN" \
-          "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}/file" | jq -c .StackFileContent)
+          "${{ steps.parse.outputs.url }}/api/stacks/${{ steps.parse.outputs.stack_id }}/file" | jq -c .StackFileContent)
         echo "::add-mask::$STACK_CONTENT"
         echo "STACK_CONTENT=$STACK_CONTENT" >> $GITHUB_ENV
 
@@ -78,4 +101,4 @@ runs:
           -H "Authorization: Bearer $JWT_TOKEN" \
           -H "Content-Type: application/json" \
           -d "{\"stackFileContent\":$STACK_CONTENT,\"env\":$ENV_VALUE,\"prune\": true,\"pullImage\": true}" \
-          "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}?endpointId=${{ inputs.endpoint_id }}"
+          "${{ steps.parse.outputs.url }}/api/stacks/${{ steps.parse.outputs.stack_id }}?endpointId=${{ steps.parse.outputs.env_id }}"
