@@ -44,7 +44,8 @@ runs:
         code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $JWT_TOKEN" "${{ inputs.url }}/api/stacks/${{ inputs.stack_id }}")
 
         if [[ "$code" != 200 ]]; then
-          echo "::error::Failed to access Portainer stack: HTTP code $code"
+          echo "::error::Failed to access Portainer stack (HTTP code $code)"
+          echo "::notice::Make sure the specified user has the necessary permissions to access the Portainer environment, the stack itself, and the container registries pulled from in the stack"
           exit 1
         fi
 
