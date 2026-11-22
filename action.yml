@@ -19,12 +19,11 @@ runs:
   using: composite
   steps:
     - name: Parse stack URL
-      shell: bash
+      shell: python
       id: parse
       env:
         TARGET_URL: ${{ inputs.url }}
       run: |
-        python3 -c '
         import os
         import sys
 
@@ -50,13 +49,10 @@ runs:
         else:
             print("::error::Invalid Portainer stack URL. Expected format: https://<host>/#!/<env_id>/docker/stacks/<name>?id=<stack_id>")
             sys.exit(1)
-        '
 
     - name: Log into the Portainer instance
       shell: bash
       run: |
-        set -e
-
         JWT_TOKEN=$(curl -sf -X POST \
           -H "Content-Type: application/json" \
           -d '{"username":"${{ inputs.username }}","password":"${{ inputs.password }}"}' \
@@ -78,8 +74,6 @@ runs:
     - name: Fetch stack environment variables
       shell: bash
       run: |
-        set -e
-
         ENV_VALUE=$(curl -sf -H "Authorization: Bearer $JWT_TOKEN" \
           "${{ steps.parse.outputs.url }}/api/stacks/${{ steps.parse.outputs.stack_id }}" | jq -c .Env)
         echo "::add-mask::$ENV_VALUE"
@@ -88,8 +82,6 @@ runs:
     - name: Fetch stack YAML definition
       shell: bash
       run: |
-        set -e
-
         STACK_CONTENT=$(curl -sf -H "Authorization: Bearer $JWT_TOKEN" \
           "${{ steps.parse.outputs.url }}/api/stacks/${{ steps.parse.outputs.stack_id }}/file" | jq -c .StackFileContent)
         echo "::add-mask::$STACK_CONTENT"
@@ -98,8 +90,6 @@ runs:
     - name: Force Portainer CE stack update
       shell: bash
       run: |
-        set -e
-
         curl -sf -X PUT -o /dev/null \
           -H "Authorization: Bearer $JWT_TOKEN" \
           -H "Content-Type: application/json" \
